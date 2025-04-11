@@ -1,74 +1,45 @@
-const { src, dest, series, watch } = require(`gulp`);
-const eslint = require(`gulp-eslint`);
-const stylelint = require(`gulp-stylelint`);
-const babel = require(`gulp-babel`);
-const uglify = require(`gulp-uglify`);
-const cleanCSS = require(`gulp-clean-css`);
-const htmlmin = require(`gulp-htmlmin`);
-const browserSync = require(`browser-sync`).create();
-const { deleteAsync } = require(`del`);
+document.addEventListener("DOMContentLoaded", function () {
+    const showMenuTrigger = document.querySelector("#js-triggers li:nth-child(1) a");
+    const showModalTrigger = document.querySelector("#js-triggers li:nth-child(2) a");
+    const modalPanel = document.querySelector(".modal-panel");
 
-// Lint CSS
-let lintCSS = () =>
-  src(`styles/**/*.css`)
-    .pipe(stylelint({
-      failAfterError: false,
-      reporters: [{ formatter: `string`, console: true }]
-    }));
+    // Create modal background dynamically
+    const modalBackground = document.createElement("div");
+    modalBackground.classList.add("modal-background");
 
-// Lint JS
-let lintJS = () =>
-  src(`scripts/*.js`)
-    .pipe(eslint())
-    .pipe(eslint.format());
+    // Menu toggling logic
+    const mainMenu = document.querySelector("nav ul.main-menu");
+    showMenuTrigger.addEventListener("click", function (event) {
+      event.preventDefault();
+      mainMenu.classList.toggle("show");
+    });
 
-// Transpile JS for dev
-let transpileJSForDev = () =>
-  src(`scripts/*.js`)
-    .pipe(babel({ presets: [`@babel/preset-env`] }))
-    .pipe(dest(`scripts`));
+    // Modal toggling logic
+    showModalTrigger.addEventListener("click", function (event) {
+      event.preventDefault();
+      modalPanel.classList.toggle("show");
+      document.body.classList.toggle("modal-open");
 
-// Serve & watch
-let serve = () => {
-  browserSync.init({
-    notify: true,
-    reloadDelay: 50,
-    server: {
-      baseDir: [`.`]
-    }
+      if (modalPanel.classList.contains("show")) {
+        document.body.appendChild(modalBackground);
+      }
+    });
+
+    modalBackground.addEventListener("click", function () {
+      modalPanel.classList.remove("show");
+      document.body.classList.remove("modal-open");
+      if (document.body.contains(modalBackground)) {
+        document.body.removeChild(modalBackground);
+      }
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        modalPanel.classList.remove("show");
+        document.body.classList.remove("modal-open");
+        if (document.body.contains(modalBackground)) {
+          document.body.removeChild(modalBackground);
+        }
+      }
+    });
   });
-
-  watch(`styles/*.css`, lintCSS).on(`change`, browserSync.reload);
-  watch(`scripts/*.js`, series(lintJS, transpileJSForDev)).on(`change`, browserSync.reload);
-  watch(`index.html`).on(`change`, browserSync.reload);
-};
-
-// Clean `prod/`
-let clean = async () => {
-  await deleteAsync([`prod`]);
-};
-
-// Compress assets for production
-let compressHTML = () =>
-  src(`index.html`)
-    .pipe(htmlmin({ collapseWhitespace: true }))
-    .pipe(dest(`prod`));
-
-let compressCSS = () =>
-  src(`styles/*.css`)
-    .pipe(cleanCSS())
-    .pipe(dest(`prod/styles`));
-
-let compressJS = () =>
-  src(`scripts/*.js`)
-    .pipe(babel({ presets: [`@babel/preset-env`] }))
-    .pipe(uglify())
-    .pipe(dest(`prod/scripts`));
-
-// Public tasks
-exports.lintCSS = lintCSS;
-exports.lintJS = lintJS;
-exports.serve = series(lintCSS, lintJS, transpileJSForDev, serve);
-exports.default = exports.serve;
-exports.build = series(clean, compressCSS, compressJS, compressHTML);
-
